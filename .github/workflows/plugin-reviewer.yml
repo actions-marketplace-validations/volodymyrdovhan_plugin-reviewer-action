@@ -1,0 +1,88 @@
+# Reusable-workflow form of the action, for callers who prefer `jobs.<id>.uses`.
+# Most repositories should use the action directly (see README).
+name: Plugin Reviewer
+
+on:
+  workflow_call:
+    inputs:
+      reviewer-url:
+        description: Base URL of the Plugin Reviewer service.
+        type: string
+        default: https://reviewer.learningsystemsstudio.com
+      source-mode:
+        description: "repository or archive."
+        type: string
+        default: repository
+      repository-url:
+        description: Public GitHub repository URL. Defaults to the calling repository.
+        type: string
+        default: ""
+      repository-ref:
+        description: Commit SHA, branch or tag. Defaults to the triggering commit.
+        type: string
+        default: ""
+      plugin-paths:
+        description: "Archive mode only: newline-separated plugin folders."
+        type: string
+        default: ""
+      review-platform:
+        description: "mp (Moodle Marketplace) or pd (Moodle Plugins Directory)."
+        type: string
+        default: mp
+      listing-type:
+        description: "free or paid."
+        type: string
+        default: free
+      fail-on:
+        description: "none, low, medium, high or blocker."
+        type: string
+        default: none
+      timeout-seconds:
+        description: Maximum time to wait for the review.
+        type: string
+        default: "900"
+    secrets:
+      PLUGIN_REVIEWER_TOKEN:
+        description: Personal Plugin Reviewer API token.
+        required: true
+    outputs:
+      submission-id:
+        description: Plugin Reviewer submission ID.
+        value: ${{ jobs.review.outputs.submission-id }}
+      active-issue-count:
+        description: Number of active findings.
+        value: ${{ jobs.review.outputs.active-issue-count }}
+      highest-severity:
+        description: Highest severity among active findings.
+        value: ${{ jobs.review.outputs.highest-severity }}
+
+jobs:
+  review:
+    name: Review Moodle plugin
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      submission-id: ${{ steps.review.outputs.submission-id }}
+      active-issue-count: ${{ steps.review.outputs.active-issue-count }}
+      highest-severity: ${{ steps.review.outputs.highest-severity }}
+    steps:
+      - name: Check out plugin source (archive mode)
+        if: ${{ inputs.source-mode == 'archive' }}
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.repository-ref || github.sha }}
+      - name: Plugin Reviewer
+        id: review
+        uses: volodymyrdovhan/plugin-reviewer-action@v1
+        with:
+          token: ${{ secrets.PLUGIN_REVIEWER_TOKEN }}
+          reviewer-url: ${{ inputs.reviewer-url }}
+          source-mode: ${{ inputs.source-mode }}
+          repository-url: ${{ inputs.repository-url }}
+          repository-ref: ${{ inputs.repository-ref }}
+          plugin-paths: ${{ inputs.plugin-paths }}
+          review-platform: ${{ inputs.review-platform }}
+          listing-type: ${{ inputs.listing-type }}
+          fail-on: ${{ inputs.fail-on }}
+          timeout-seconds: ${{ inputs.timeout-seconds }}

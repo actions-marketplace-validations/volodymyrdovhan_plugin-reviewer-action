@@ -1,0 +1,79 @@
+name: Moodle Plugin Reviewer
+description: Review a Moodle plugin with Plugin Reviewer and fail the job on findings at or above a chosen severity.
+author: Volodymyr Dovhan
+branding:
+  icon: check-circle
+  color: green
+
+inputs:
+  token:
+    description: Personal Plugin Reviewer API token (create it on your account page). Pass it from a repository secret.
+    required: true
+  reviewer-url:
+    description: Base URL of the Plugin Reviewer service.
+    required: false
+    default: https://reviewer.learningsystemsstudio.com
+  source-mode:
+    description: "What to review: `repository` (the public GitHub repository at a ref) or `archive` (plugin folders from the checked-out workspace)."
+    required: false
+    default: repository
+  repository-url:
+    description: Public GitHub repository URL. Defaults to the repository running the workflow.
+    required: false
+    default: ""
+  repository-ref:
+    description: Commit SHA, branch or tag to review. Defaults to the commit that triggered the workflow.
+    required: false
+    default: ""
+  plugin-paths:
+    description: "Archive mode only: newline-separated plugin folders (each with a version.php), relative to the workspace."
+    required: false
+    default: ""
+  review-platform:
+    description: "Review profile: `mp` (Moodle Marketplace) or `pd` (Moodle Plugins Directory)."
+    required: false
+    default: mp
+  listing-type:
+    description: "Marketplace listing type: `free` or `paid`."
+    required: false
+    default: free
+  fail-on:
+    description: "Fail the job when an active finding has this severity or higher: `none`, `low`, `medium`, `high`, `blocker` (`any` = `low`)."
+    required: false
+    default: none
+  timeout-seconds:
+    description: Maximum time to wait for the review to finish.
+    required: false
+    default: "900"
+
+outputs:
+  submission-id:
+    description: Plugin Reviewer submission ID (comma-separated in archive mode with several plugins).
+    value: ${{ steps.review.outputs.submission-id }}
+  active-issue-count:
+    description: Number of active (not excluded) findings.
+    value: ${{ steps.review.outputs.active-issue-count }}
+  highest-severity:
+    description: Highest severity among active findings (`none` when there are none).
+    value: ${{ steps.review.outputs.highest-severity }}
+
+runs:
+  using: composite
+  steps:
+    - name: Queue and await the review
+      id: review
+      shell: bash
+      env:
+        REVIEWER_URL: ${{ inputs.reviewer-url }}
+        REVIEWER_TOKEN: ${{ inputs.token }}
+        SOURCE_MODE: ${{ inputs.source-mode }}
+        REQUESTED_REPOSITORY_URL: ${{ inputs.repository-url }}
+        REQUESTED_REPOSITORY_REF: ${{ inputs.repository-ref }}
+        PLUGIN_PATHS: ${{ inputs.plugin-paths }}
+        REVIEW_PLATFORM: ${{ inputs.review-platform }}
+        LISTING_TYPE: ${{ inputs.listing-type }}
+        FAIL_ON: ${{ inputs.fail-on }}
+        TIMEOUT_SECONDS: ${{ inputs.timeout-seconds }}
+        CALLER_REPOSITORY: ${{ github.repository }}
+        CALLER_SHA: ${{ github.sha }}
+      run: "$GITHUB_ACTION_PATH/scripts/review.sh"
