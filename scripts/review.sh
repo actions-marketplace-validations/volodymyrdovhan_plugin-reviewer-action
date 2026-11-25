@@ -3,6 +3,8 @@
 # applies the fail-on gate. Inputs arrive as environment variables (action.yml).
 set -euo pipefail
 
+# Upper-case inputs are exported by action.yml, which shellcheck cannot see.
+# shellcheck disable=SC2153
 reviewer_url="${REVIEWER_URL%/}"
 repository_url="${REQUESTED_REPOSITORY_URL:-https://github.com/${CALLER_REPOSITORY}}"
 repository_ref="${REQUESTED_REPOSITORY_REF:-${CALLER_SHA}}"
